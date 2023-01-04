@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\Source\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Assets\window.fs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\window.vs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\colormap.fs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\colormap.vs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\deferred.vs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\deferred.fs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\shadowmap.fs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\shadowmap.vs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\ptShadowmap.fs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\ptShadowmap.gs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\ptShadowmap.vs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\bloom.fs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\bloom.vs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="glsl">
+      <UniqueIdentifier>{4f0ee1bf-2fda-4f0a-8437-6bbabac22e61}</UniqueIdentifier>
+      <Extensions>.glsl</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Source\main.h" />
+  </ItemGroup>
+</Project>
