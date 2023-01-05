@@ -88,6 +88,12 @@ typedef struct _Shape
 	int materialID;
 } Shape;
 
+struct VertexAL {
+	vec3 position;
+	vec3 normal;
+	vec2 texcoord;
+};
+
 typedef struct _GBuffer
 {
 	GLuint fbo;
@@ -126,7 +132,8 @@ typedef struct _TestBuffer
 } TBuffer;
 
 // scene uniform
-typedef struct _SceneUniform {
+typedef struct _SceneUniform 
+{
 	GLint tex_diffuse;
 	GLint tex_normal;
 	GLint tex_disp;
@@ -154,6 +161,13 @@ typedef struct _SceneUniform {
 	GLint ptLightTex;
 	GLint ptLightViewVP;
 	GLint ptLightViewM;
+	
+	GLint isAreaLightShowed;
+	GLint areaLightPos;
+	GLint areaLightVec;
+	GLint areaLightViewVP;
+	GLint areaLightViewM;
+
 } SUniform;
 
 // deferred uniform
@@ -192,6 +206,7 @@ int window_height = 700;
 GBuffer gbuffer;
 SBuffer shadow_buffer;
 SBuffer ptshadow_buffer;
+SBuffer areashadow_buffer;
 DBuffer deferred_buffer;
 BBuffer bloom_buffer;
 WBuffer window_buffer;
@@ -200,6 +215,7 @@ WBuffer window_buffer;
 GLuint colormap_program;
 GLuint shadowmap_program;
 GLuint ptshadowmap_program;
+GLuint areashadowmap_program;
 GLuint deferred_program;
 GLuint bloom_program;
 GLuint window_program;
@@ -221,6 +237,25 @@ vector<Shape> sphere_shapes;
 Shape deferred_canvas;
 Shape bloom_canvas;
 Shape screen;
+
+// area light
+const GLfloat psize = 10.0f;
+VertexAL planeVertices[6] = {
+	{ {-psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} },
+	{ {-psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f} },
+	{ { psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} },
+	{ {-psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} },
+	{ { psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} },
+	{ { psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f} }
+};
+VertexAL areaLightVertices[6] = {
+	{ {-8.0f, 2.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // 0 1 5 4
+	{ {-8.0f, 2.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} },
+	{ {-8.0f, 0.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
+	{ {-8.0f, 2.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} },
+	{ {-8.0f, 0.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
+	{ {-8.0f, 0.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }
+};
 
 // buffer -------------------------------------------------------------------------------------------------
 void setFrameBuffer(int, int);

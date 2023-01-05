@@ -49,6 +49,12 @@ vec3 ptLightPos = vec3(1.87659f, 0.4625f, 0.103928f);
 vec4 ptLightColor = vec4(1.f);
 mat4 ptLight_proj_matrix;
 
+// areaLight Shadow
+bool isAreaLightShowed = true;
+vec3 areaLightPos = vec3(1.f, 0.5f, -0.5f);
+vec3 areaLightColor = vec3(0.8f, 0.6f, 0.f);
+mat4 areaLight_proj_matrix;
+
 //	about timer
 int timer_cnt = 0;
 bool timer_enabled = true;
@@ -224,6 +230,27 @@ void setPtShadowBuffer()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, ptshadow_buffer.fbo);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, ptshadow_buffer.tex, 0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void setAreaShadowBuffer() 
+{
+	glGenFramebuffers(1, &areashadow_buffer.fbo);
+
+	glGenTextures(1, &areashadow_buffer.tex);
+
+	glBindTexture(GL_TEXTURE_2D, areashadow_buffer.tex);
+	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_FLOAT, NULL);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, areashadow_buffer.fbo);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, areashadow_buffer.tex, 0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -856,6 +883,10 @@ void setSceneUniformLocation() {
 	scene_uniform.ptLightViewVP = glGetUniformLocation(ptSid, "ptLightViewVP");
 	scene_uniform.ptLightViewM = glGetUniformLocation(ptSid, "ptLightViewM");
 
+	GLuint asId = areashadowmap_program;
+	scene_uniform.areaLightPos = glGetUniformLocation(asId, "areaLightPos");
+
+
 	glUseProgram(colormap_program);
 	glUniform1i(scene_uniform.tex_diffuse, 0);
 	glUniform1i(scene_uniform.tex_normal, 1);
@@ -1120,6 +1151,7 @@ void My_Init()
 	setProgram(colormap_program, "colormap.vs.glsl", "colormap.fs.glsl", nullptr);
 	setProgram(shadowmap_program, "shadowmap.vs.glsl", "shadowmap.fs.glsl", nullptr);
 	setProgram(ptshadowmap_program, "ptShadowmap.vs.glsl", "ptShadowmap.fs.glsl", "ptShadowmap.gs.glsl");
+	setProgram(areashadowmap_program, "areaShadowmap.vs.glsl", "areaShadowmap.fs.glsl", nullptr);
 	setSceneUniformLocation();
 	glUseProgram(colormap_program);
 	loadScene();

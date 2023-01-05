@@ -86,6 +86,8 @@
     <ClCompile Include="..\Source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Assets\areaShadowmap.fs.glsl" />
+    <None Include="..\Assets\areaShadowmap.vs.glsl" />
     <None Include="..\Assets\bloom.fs.glsl" />
     <None Include="..\Assets\bloom.vs.glsl" />
     <None Include="..\Assets\colormap.fs.glsl" />

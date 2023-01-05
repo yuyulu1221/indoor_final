@@ -18,7 +18,7 @@ uniform int shadingCase;
 uniform bool SSAOCase;
 uniform vec3 directLightVec = vec3(0.f);
 uniform vec3 pointLightPosition = vec3(0.f);
-uniform vec3 pointLightColor = vec3(1.000000f, 0.753000f, 0.796000f);
+uniform vec3 pointLightColor = vec3(1.f, 1.f, 1.f);
 uniform vec3 eyePosition = vec3(0.f);
 uniform mat4 view_matirx = mat4(0.f);
 uniform mat4 proj_matrix = mat4(0.f);
@@ -52,42 +52,42 @@ void main()
 	vec4 color = vec4(0.f);
 	switch(shadingCase)
 	{
-		case 0:
-			if (emissive())
-			{
-				color = 0.3f * ambient + 0.7f * diffuse;
-			}
-			else
-			{
-				color = PhongShading();
-			}
-			fragColor = color;
+	case 0:
+		if (emissive())
+		{
+			color = 0.3f * ambient + 0.7f * diffuse;
+		}
+		else
+		{
+			color = PhongShading();
+		}
+		fragColor = color;
 
 //			fragColor = 0.45f * ambient * diffuse + 0.45f * diffuse + 0.1f * specular;
-			break;
-		case 1:
-			fragColor = texelFetch(position_map, ivec2(gl_FragCoord.xy), 0);
+		break;
+	case 1:
+		fragColor = texelFetch(position_map, ivec2(gl_FragCoord.xy), 0);
 //			fragColor = texelFetch(shadow_map, ivec2(gl_FragCoord.xy), 0);
-			break;
-		case 2:
-			fragColor = texelFetch(normal_map, ivec2(gl_FragCoord.xy), 0);
+		break;
+	case 2:
+		fragColor = texelFetch(normal_map, ivec2(gl_FragCoord.xy), 0);
 //			fragColor = vec4(texelFetch(normal_map, ivec2(gl_FragCoord.xy), 0).xyz * 2 - vec3(1.f), 1.f);
-			break;
-		case 3:
-			fragColor = ambient;
-			break;
-		case 4:
-			fragColor = diffuse;
-			break;
-		case 5:
-			fragColor = specular;
-			break;
-		case 6:
-			fragColor = SSAO();
-			break;
-		default:
-			fragColor = 0.2f * ambient + 0.7f * diffuse + 0.1f * specular;
-			break;
+		break;
+	case 3:
+		fragColor = ambient;
+		break;
+	case 4:
+		fragColor = diffuse;
+		break;
+	case 5:
+		fragColor = specular;
+		break;
+	case 6:
+		fragColor = SSAO();
+		break;
+	default:
+		fragColor = 0.2f * ambient + 0.7f * diffuse + 0.1f * specular;
+		break;
 	}
 
     float brightness = dot(color.rgb, vec3(0.7152, 0.3126, 0.0722));
@@ -117,12 +117,12 @@ vec4 PhongShading()
 	vec3 L = normalize(-directLightVec);
 	vec3 V = normalize(eyePosition - position);
 	vec3 R = reflect(-L, N);
-//	vec3 H = normalize(L + V);
+	vec3 H = normalize(L + V);
 
 	vec3 ambient = ambient_albedo * diffuse_albedo;
-	vec3 diffuse = vec3(3.f) * max(dot(N, L), 0.f) * diffuse_albedo;
-//	vec3 specular = pow(max(dot(N, H), 0.f), 255.f) * specular_albedo;
-	vec3 specular = pow(max(dot(R, V), 0.f), 900.f) * specular_albedo;
+	vec3 diffuse = vec3(5.f) * max(dot(N, L), 0.f) * diffuse_albedo;
+	vec3 specular = pow(max(dot(N, H), 0.f), 255.f) * specular_albedo;
+	//vec3 specular = pow(max(dot(R, V), 0.f), 900.f) * specular_albedo;
 	
 	if(SSAOCase)
 	{
@@ -132,7 +132,7 @@ vec4 PhongShading()
 	{
 		color += 0.1f * ambient + (0.7f * diffuse + 0.2f * specular) * shadow_albedo;
 	}
-
+	// drawing ptLight effect
 	float dist = length(pointLightPosition - position);
 	L = normalize(pointLightPosition - position);
 //	H = normalize(L + V);
@@ -140,9 +140,13 @@ vec4 PhongShading()
 	diffuse = pointLightColor * max(dot(N, L), 0.f) * diffuse_albedo;
 //	specular = pow(max(dot(N, H), 0.f), 255.f) * specular_albedo;
 	specular = pow(max(dot(R, V), 0.f), 900.f) * specular_albedo;
-	float attenuation = 3.0f / (pow(dist, 2.0) + 1.f);
+	//float attenuation = 3.0f / (pow(dist, 2.0) + 1.f);
+	float attenuation = 1.f + 0.7f * dist + 0.14 * dist * dist;
 
-	color += (0.8f * diffuse + 0.2f * specular) * attenuation  * ptShadow_albedo;
+	color += (diffuse + specular) / attenuation  * ptShadow_albedo;
+
+	// drawing areaLight effect
+
 
 	return vec4(color, 1.f);
 }
