@@ -20,9 +20,11 @@ uniform vec3 directLightVec = vec3(0.f);
 uniform vec3 pointLightPosition = vec3(0.f);
 uniform vec3 pointLightColor = vec3(1.f, 1.f, 1.f);
 uniform vec3 areaLightPos = vec3(0.f);
-uniform float areaLightLength = 0.5f;
+uniform float areaLightWidth = .1f;
+uniform float areaLightHeight = .1f;
+uniform vec3 areaLightDir = vec3(.8f, .6f, .0f);
 uniform vec3 eyePosition = vec3(0.f);
-uniform mat4 view_matirx = mat4(0.f);
+uniform mat4 view_matrix = mat4(0.f);
 uniform mat4 proj_matrix = mat4(0.f);
 uniform mat4 inv_proj_matrix = mat4(0.f);
 uniform vec2 noise_scale = vec2(0.f);
@@ -150,64 +152,77 @@ vec4 PhongShading()
 	//float attenuation = 3.0f / (pow(dist, 2.0) + 1.f);
 	float attenuation = 1.f + 0.7f * dist + 0.14 * dist * dist;
 
-	color += (diffuse + specular) / attenuation  * ptShadow_albedo;
+	color += (0.7 * diffuse + 0.2 * specular) / attenuation  * ptShadow_albedo;
 
 	// drawing areaLight effect
-//	vec3 v0, v1, v2, v3;
-//	v0 = (areaLightPos + vec3(-areaLightLength, areaLightLength, 0.f)) - position;
-//	v1 = (areaLightPos + vec3(-areaLightLength, -areaLightLength, 0.f)) - position;
-//	v2 = (areaLightPos + vec3(areaLightLength, areaLightLength, 0.f)) - position;
-//	v3 = (areaLightPos + vec3(areaLightLength, -areaLightLength, 0.f)) - position;
-//
-//	//float facingCheck = dot(v[0], cross((
-//
-//	vec3 n0, n1, n2, n3;
-//	n0 = normalize(cross(v0, v1));
-//	n1 = normalize(cross(v1, v2));
-//	n2 = normalize(cross(v2, v3));
-//	n3 = normalize(cross(v3, v0));
-//
-//	float g0, g1, g2, g3;
-//	g0 = acos(dot(-n0, n1));
-//	g1 = acos(dot(-n1, n2));
-//	g2 = acos(dot(-n2, n3));
-//	g3 = acos(dot(-n3, n0));
-//
-//	float solidAngle = g0 + g1 + g2 + g3 - 2.0 * 3.14159265359;
-//	float NoL = solidAngle * 0.2 * (
-//		clamp ( dot( normalize ( v0 ), N ), 0, 1) +
-//		clamp ( dot( normalize ( v1 ) , N ) , 0, 1)+
-//		clamp ( dot( normalize ( v2 ) , N ) , 0, 1)+
-//		clamp ( dot( normalize ( v3 ) , N ) , 0, 1)+
-//		clamp ( dot( normalize ( areaLightPos - position ) , N ), 0, 1)
-//	);
-//	vec3 right = vec3(0.f, 0.f, -1.f);
-//	vec3 up = vec3(0.f, 1.f, 0.f);
-//	vec3 intersectPoint = CalculatePlaneIntersection(position, R, right, areaLightPos);
-//
-//	vec3 intersectionVector = intersectPoint - areaLightPos;
-//	vec2 intersectPlanePoint = vec2(dot(intersectionVector,right), dot(intersectionVector,up));
-//	vec2 nearest2DPoint = vec2(clamp(intersectPlanePoint.x, -areaLightLength, areaLightLength), clamp(intersectPlanePoint.y, -areaLightLength, areaLightLength));	
-//
-//	vec3 specularFactor = vec3(0,0,0);
-//	float specularAmount = dot(R, right);
-//	float surfaceSpec = 1.f;
-//	float roughness = 0.2f;
-//	if (specularAmount > 0.0)
-//	{
-//		float specFactor = 1.0 - clamp(length(nearest2DPoint - intersectPlanePoint) * pow((1.0 - roughness), 2) * 32.0, 0.0, 1.0);
-//		specularFactor += surfaceSpec * specFactor * specularAmount * NoL;
-//	}	
-//	vec3 nearestPoint = areaLightPos + (right * nearest2DPoint.x + up * nearest2DPoint.y);
-//	dist = distance(position, nearestPoint);
-//	float falloff = 1.0 - clamp(dist, 0, 1);	
-//
-//	float luminosity = 100.f;
-//	vec3 diffuseFactor = vec3(0.f);
-//	vec3 lightColor = vec3(0.5f, 0.5f, 0.0f);
-//	vec3 light = (diffuse + specular) * falloff * lightColor * luminosity;	
-//
-//	color += light;
+
+	vec3 p0, p1, p2, p3;
+	p0 = areaLightPos + vec3(-areaLightWidth, areaLightHeight, 0.f);
+	p1 = areaLightPos + vec3(-areaLightWidth, -areaLightHeight, 0.f);
+	p2 = areaLightPos + vec3(areaLightWidth, areaLightHeight, 0.f);
+	p3 = areaLightPos + vec3(areaLightWidth, -areaLightHeight, 0.f);
+
+	vec3 v0, v1, v2, v3;
+	v0 = p0 - position;
+	v1 = p1 - position;
+	v2 = p2 - position;
+	v3 = p3 - position;
+
+	float facingCheck = dot(v0, cross(p2 - p0, p1 - p0));
+	if (facingCheck > 0.0) 
+	{
+		return vec4(color, 1.f);
+	}
+
+	vec3 n0, n1, n2, n3;
+	n0 = normalize(cross(v0, v1));
+	n1 = normalize(cross(v1, v2));
+	n2 = normalize(cross(v2, v3));
+	n3 = normalize(cross(v3, v0));
+
+	float g0, g1, g2, g3;
+	g0 = acos(dot(-n0, n1));
+	g1 = acos(dot(-n1, n2));
+	g2 = acos(dot(-n2, n3));
+	g3 = acos(dot(-n3, n0));
+
+	float solidAngle = g0 + g1 + g2 + g3 - 2.0 * 3.14159265359;
+	float NoL = solidAngle * 0.2 * (
+		clamp ( dot( normalize ( v0 ), N ), 0, 1) +
+		clamp ( dot( normalize ( v1 ) , N ) , 0, 1)+
+		clamp ( dot( normalize ( v2 ) , N ) , 0, 1)+
+		clamp ( dot( normalize ( v3 ) , N ) , 0, 1)+
+		clamp ( dot( normalize ( areaLightPos - position ) , N ), 0, 1)
+	);
+	vec3 right = vec3(0.f, 0.f, -1.f);
+	vec3 up = vec3(0.f, 1.f, 0.f);
+
+	vec3 intersectPoint = CalculatePlaneIntersection(position, R, areaLightDir, areaLightPos);
+
+	vec3 intersectionVector = intersectPoint - areaLightPos;
+	vec2 intersectPlanePoint = vec2(dot(intersectionVector,right), dot(intersectionVector,up));
+	vec2 nearest2DPoint = vec2(clamp(intersectPlanePoint.x, -areaLightWidth, areaLightWidth), clamp(intersectPlanePoint.y, -areaLightHeight, areaLightHeight));	
+
+	vec3 specularFactor = vec3(0.f ,0.f, 0.f);
+	float specularAmount = dot(R, areaLightDir);
+	float surfaceSpec = 1.f;
+	float roughness = 0.1f;
+	if (specularAmount > 0.0)
+	{
+		float specFactor = 1.0 - clamp(length(nearest2DPoint - intersectPlanePoint) * pow((1.0 - roughness), 2) * 32.0, 0.0, 1.0);
+		specularFactor += surfaceSpec * specFactor * specularAmount * NoL;
+	}	
+	vec3 nearestPoint = areaLightPos + (right * nearest2DPoint.x + up * nearest2DPoint.y);
+	dist = distance(position, nearestPoint);
+	//float falloff = 1.0 - clamp(dist / 10.f, 0, 1);	
+	attenuation = 1.f + 0.7f * dist + 0.14 * dist * dist;
+
+	float luminosity = 3.f;
+	vec3 diffuseFactor = vec3(0.f);
+	vec3 lightColor = vec3(0.5f, 0.5f, 0.0f);
+	vec3 light = (0.7f * diffuse + 0.2f * specularAmount) / attenuation * lightColor * luminosity;	
+
+	color += light;
 
 	return vec4(color, 1.f);
 }
@@ -222,7 +237,7 @@ vec4 SSAO()
 	vec4 depth_position = inv_proj_matrix * vec4(vec3(fs_in.texcoord, depth) * 2.0 - 1.0, 1.0);               
 	depth_position /= depth_position.w;
 	
-	vec3 N = normalize((view_matirx * (texture(normal_map, fs_in.texcoord) * 2 - vec4(1.f))).xyz);                                           
+	vec3 N = normalize((view_matrix * (texture(normal_map, fs_in.texcoord) * 2 - vec4(1.f))).xyz);                                           
 	vec3 randvec = normalize(texture(noise_map, fs_in.texcoord * noise_scale).xyz * 2.0 - 1.0); 
 	vec3 T = normalize(randvec - N * dot(randvec, N));                                          
 	vec3 B = cross(N, T);                                                                       

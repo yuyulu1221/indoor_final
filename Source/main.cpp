@@ -2,6 +2,12 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 
+//	Menu
+#define MENU_MOVE 4
+#define MENU_MOVE_DIR 5
+#define MENU_MOVE_PT 6
+#define MENU_MOVE_AREA 7
+
 //	timer
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
@@ -37,10 +43,13 @@ mat4 scale_bias;
 mat4 shadow_matrix;
 //vec3 directLightVec = vec3(0.f, -1.f, 0.f);
 //vec3 directLightVec = -normalize(vec3(-2.51449f, 0.477241f, -1.21263f));
-vec3 directLightVec = normalize(vec3(0.542f, -0.141f, -0.422f));
-//vec3 directLightPos = vec3(0.f) - 2.5f * directLightVec;
 vec3 directLightPos = vec3(-2.845f, 2.028f, -1.293f);
+vec3 directLightVec = normalize(vec3(0.542f, -0.141f, -0.422f) - directLightPos);
+vec3 directLightCenter = vec3(0.542f, -0.141f, -0.422f);
+//vec3 directLightPos = vec3(0.f) - 2.5f * directLightVec;
 float shadowRange = 5.f;
+
+vec3* movableLightPos = &directLightPos;
 
 // pointLight Shadow
 bool isPtLightShowed = false;
@@ -53,6 +62,9 @@ mat4 ptLight_proj_matrix;
 bool isAreaLightShowed = true;
 vec3 areaLightPos = vec3(1.f, 0.5f, -0.5f);
 float areaLightLength = 0.5f;
+float areaLightWidth = 0.8f;
+float areaLightHeight = 0.5f;
+vec3 areaLightDir = vec3(0.f, 0.f, -1.f);
 vec3 areaLightColor = vec3(0.8f, 0.6f, 0.f);
 mat4 areaLight_proj_matrix;
 
@@ -886,7 +898,7 @@ void setSceneUniformLocation() {
 
 	GLuint asId = areashadowmap_program;
 	scene_uniform.areaLightPos = glGetUniformLocation(asId, "areaLightPos");
-
+	scene_uniform.areaLightDir = glGetUniformLocation(asId, "areaLightDir");
 
 	glUseProgram(colormap_program);
 	glUniform1i(scene_uniform.tex_diffuse, 0);
@@ -904,8 +916,9 @@ void setDeferredUniformLocation() {
 	deferred_uniform.directLightVec = glGetUniformLocation(id, "directLightVec");
 	deferred_uniform.pointLightPosition = glGetUniformLocation(id, "pointLightPosition");
 	deferred_uniform.areaLightPosition = glGetUniformLocation(id, "areaLightPos");
+	deferred_uniform.areaLightDir = glGetUniformLocation(id, "areaLightDir");
 	deferred_uniform.eyePosition = glGetUniformLocation(id, "eyePosition");
-	deferred_uniform.view_matirx = glGetUniformLocation(id, "view_matirx");
+	deferred_uniform.view_matrix = glGetUniformLocation(id, "view_matrix");
 	deferred_uniform.proj_matrix = glGetUniformLocation(id, "proj_matrix");
 	deferred_uniform.inv_proj_matrix = glGetUniformLocation(id, "inv_proj_matrix");
 	deferred_uniform.noise_scale = glGetUniformLocation(id, "noise_scale");
@@ -1261,14 +1274,15 @@ void My_Display()
 	//deferred->SetSSAOCase(isSSAO);
 	glUniform1i(deferred_uniform.SSAOCase, isSSAO);
 	//deferred->SetDirectLightVec(directLightVec);
-	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightVec));
+	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightCenter - directLightPos));
 	//deferred->SetPointLightPosition(ptLightPos);
 	glUniform3fv(deferred_uniform.pointLightPosition, 1, glm::value_ptr(ptLightPos));
 	glUniform3fv(deferred_uniform.areaLightPosition, 1, glm::value_ptr(areaLightPos));
+	glUniform3fv(deferred_uniform.areaLightDir, 1, glm::value_ptr(areaLightDir));
 	//deferred->SetEyePosition(viewEye);
 	glUniform3fv(deferred_uniform.eyePosition, 1, glm::value_ptr(viewEye));
 	//deferred->SetVP(view_matrix, proj_matrix);
-	glUniformMatrix4fv(deferred_uniform.view_matirx, 1, GL_FALSE, glm::value_ptr(view_matrix));
+	glUniformMatrix4fv(deferred_uniform.view_matrix, 1, GL_FALSE, glm::value_ptr(view_matrix));
 	glUniformMatrix4fv(deferred_uniform.proj_matrix, 1, GL_FALSE, glm::value_ptr(proj_matrix));
 	glUniformMatrix4fv(deferred_uniform.inv_proj_matrix, 1, GL_FALSE, glm::value_ptr(inverse(proj_matrix)));
 	glUseProgram(0);
@@ -1342,7 +1356,7 @@ void My_Reshape(int width, int height)
 	// light view
 	light_proj_matrix = ortho(-shadowRange, shadowRange, -shadowRange, shadowRange, 0.1f, 100.f);
 	//light_view_matrix = lookAt(directLightPos, vec3(0.f), viewUp);
-	light_view_matrix = lookAt(directLightPos, directLightPos + directLightVec, viewUp);
+	light_view_matrix = lookAt(directLightPos, directLightCenter, viewUp);
 	scale_bias = translate(mat4(1.0f), vec3(0.5f, 0.5f, 0.5f)) * scale(mat4(1.0f), vec3(0.5f, 0.5f, 0.5f));
 	shadow_matrix = scale_bias * light_proj_matrix * light_view_matrix;
 
@@ -1394,6 +1408,7 @@ void My_Motion(int x, int y) {
 void My_Keyboard(unsigned char key, int x, int y)
 {
 	float length = 0.05f;
+	
 
 	switch (key)
 	{
@@ -1423,28 +1438,28 @@ void My_Keyboard(unsigned char key, int x, int y)
 			break;
 		// pt light move
 		case 'I': case 'i':
-			if (isPtLightShowed) 
-				ptLightPos -= vec3(1.0, 0.0, 0.0) * length;
+			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			*movableLightPos -= vec3(1.0, 0.0, 0.0) * length;
 			break;
 		case 'K': case 'k':
-			if (isPtLightShowed) 
-				ptLightPos += vec3(1.0, 0.0, 0.0) * length;
+			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			*movableLightPos += vec3(1.0, 0.0, 0.0) * length;
 			break;
 		case 'J': case 'j':
-			if (isPtLightShowed) 
-				ptLightPos += vec3(0.0, 0.0, 1.0) * length;
+			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			*movableLightPos += vec3(0.0, 0.0, 1.0) * length;
 			break;
 		case 'L': case 'l':
-			if (isPtLightShowed) 
-				ptLightPos -= vec3(0.0, 0.0, 1.0) * length;
+			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			*movableLightPos -= vec3(0.0, 0.0, 1.0) * length;
 			break;
 		case 'U': case 'u':
-			if (isPtLightShowed) 
-				ptLightPos += vec3(0.0, 1.0, 0.0) * length;
+			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			*movableLightPos += vec3(0.0, 1.0, 0.0) * length;
 			break;
 		case 'O': case 'o':
-			if(isPtLightShowed) 
-				ptLightPos -= vec3(0.0, 1.0, 0.0) * length;
+			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			*movableLightPos -= vec3(0.0, 1.0, 0.0) * length;
 			break;
 		case 'P': case 'p':
 			isPtLightShowed = !isPtLightShowed;
@@ -1470,6 +1485,7 @@ void My_Keyboard(unsigned char key, int x, int y)
 			printf("Key %c is pressed at (%d, %d)\n", key, x, y);
 			break;
 	}
+	directLightVec = normalize(directLightCenter - directLightPos);
 }
 
 void My_SpecialKeys(int key, int x, int y)
@@ -1505,6 +1521,15 @@ void My_Menu(int id)
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
 		break;
+	case MENU_MOVE_DIR:
+		movableLightPos = &directLightPos;
+		break;
+	case MENU_MOVE_PT:
+		movableLightPos = &ptLightPos;
+		break;
+	case MENU_MOVE_AREA:
+		movableLightPos = &areaLightPos;
+		break;
 	case MENU_EXIT:
 		exit(0);
 		break;
@@ -1539,17 +1564,25 @@ int main(int argc, char *argv[])
 	// Create a menu and bind it to mouse right button.
 	int menu_main = glutCreateMenu(My_Menu);
 	int menu_timer = glutCreateMenu(My_Menu);
+	int menu_move = glutCreateMenu(My_Menu);
 	int menu_comparison = glutCreateMenu(My_Menu);
 	int menu_isNormal = glutCreateMenu(My_Menu);
 	int menu_shader = glutCreateMenu(My_Menu);
 
 	glutSetMenu(menu_main);
 	glutAddSubMenu("Timer", menu_timer);
+	glutAddSubMenu("Move", menu_move);
 	glutAddMenuEntry("Exit", MENU_EXIT);
 
 	glutSetMenu(menu_timer);
 	glutAddMenuEntry("Start", MENU_TIMER_START);
 	glutAddMenuEntry("Stop", MENU_TIMER_STOP);
+
+	glutSetMenu(menu_move);
+	glutAddMenuEntry("Dir", MENU_MOVE_DIR);
+	glutAddMenuEntry("Pt", MENU_MOVE_PT);
+	glutAddMenuEntry("Area", MENU_MOVE_AREA);
+
 
 	glutSetMenu(menu_main);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);

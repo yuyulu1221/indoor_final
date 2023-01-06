@@ -164,7 +164,7 @@ typedef struct _SceneUniform
 	
 	GLint isAreaLightShowed;
 	GLint areaLightPos;
-	GLint areaLightVec;
+	GLint areaLightDir;
 	GLint areaLightViewVP;
 	GLint areaLightViewM;
 
@@ -177,9 +177,9 @@ typedef struct _DeferredUniform {
 	GLint directLightVec;
 	GLint pointLightPosition;
 	GLint areaLightPosition;
-	GLint areaLightLength;
+	GLint areaLightDir;
 	GLint eyePosition;
-	GLint view_matirx;
+	GLint view_matrix;
 	GLint proj_matrix;
 	GLint inv_proj_matrix;
 	GLint noise_scale;
