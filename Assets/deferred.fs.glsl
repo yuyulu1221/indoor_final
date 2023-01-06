@@ -19,6 +19,8 @@ uniform bool SSAOCase;
 uniform vec3 directLightVec = vec3(0.f);
 uniform vec3 pointLightPosition = vec3(0.f);
 uniform vec3 pointLightColor = vec3(1.f, 1.f, 1.f);
+uniform vec3 areaLightPos = vec3(0.f);
+uniform float areaLightLength = 0.5f;
 uniform vec3 eyePosition = vec3(0.f);
 uniform mat4 view_matirx = mat4(0.f);
 uniform mat4 proj_matrix = mat4(0.f);
@@ -40,6 +42,11 @@ layout(std140) uniform Kernals
 bool emissive();
 vec4 PhongShading();
 vec4 SSAO();
+
+vec3 CalculatePlaneIntersection(vec3 viewPosition, vec3 reflectionVector, vec3 lightDirection, vec3 rectangleLightCenter)
+{
+   return viewPosition + reflectionVector * (dot(lightDirection,rectangleLightCenter-viewPosition)/dot(lightDirection,reflectionVector));
+}
 
 void main()
 {
@@ -146,7 +153,61 @@ vec4 PhongShading()
 	color += (diffuse + specular) / attenuation  * ptShadow_albedo;
 
 	// drawing areaLight effect
-
+//	vec3 v0, v1, v2, v3;
+//	v0 = (areaLightPos + vec3(-areaLightLength, areaLightLength, 0.f)) - position;
+//	v1 = (areaLightPos + vec3(-areaLightLength, -areaLightLength, 0.f)) - position;
+//	v2 = (areaLightPos + vec3(areaLightLength, areaLightLength, 0.f)) - position;
+//	v3 = (areaLightPos + vec3(areaLightLength, -areaLightLength, 0.f)) - position;
+//
+//	//float facingCheck = dot(v[0], cross((
+//
+//	vec3 n0, n1, n2, n3;
+//	n0 = normalize(cross(v0, v1));
+//	n1 = normalize(cross(v1, v2));
+//	n2 = normalize(cross(v2, v3));
+//	n3 = normalize(cross(v3, v0));
+//
+//	float g0, g1, g2, g3;
+//	g0 = acos(dot(-n0, n1));
+//	g1 = acos(dot(-n1, n2));
+//	g2 = acos(dot(-n2, n3));
+//	g3 = acos(dot(-n3, n0));
+//
+//	float solidAngle = g0 + g1 + g2 + g3 - 2.0 * 3.14159265359;
+//	float NoL = solidAngle * 0.2 * (
+//		clamp ( dot( normalize ( v0 ), N ), 0, 1) +
+//		clamp ( dot( normalize ( v1 ) , N ) , 0, 1)+
+//		clamp ( dot( normalize ( v2 ) , N ) , 0, 1)+
+//		clamp ( dot( normalize ( v3 ) , N ) , 0, 1)+
+//		clamp ( dot( normalize ( areaLightPos - position ) , N ), 0, 1)
+//	);
+//	vec3 right = vec3(0.f, 0.f, -1.f);
+//	vec3 up = vec3(0.f, 1.f, 0.f);
+//	vec3 intersectPoint = CalculatePlaneIntersection(position, R, right, areaLightPos);
+//
+//	vec3 intersectionVector = intersectPoint - areaLightPos;
+//	vec2 intersectPlanePoint = vec2(dot(intersectionVector,right), dot(intersectionVector,up));
+//	vec2 nearest2DPoint = vec2(clamp(intersectPlanePoint.x, -areaLightLength, areaLightLength), clamp(intersectPlanePoint.y, -areaLightLength, areaLightLength));	
+//
+//	vec3 specularFactor = vec3(0,0,0);
+//	float specularAmount = dot(R, right);
+//	float surfaceSpec = 1.f;
+//	float roughness = 0.2f;
+//	if (specularAmount > 0.0)
+//	{
+//		float specFactor = 1.0 - clamp(length(nearest2DPoint - intersectPlanePoint) * pow((1.0 - roughness), 2) * 32.0, 0.0, 1.0);
+//		specularFactor += surfaceSpec * specFactor * specularAmount * NoL;
+//	}	
+//	vec3 nearestPoint = areaLightPos + (right * nearest2DPoint.x + up * nearest2DPoint.y);
+//	dist = distance(position, nearestPoint);
+//	float falloff = 1.0 - clamp(dist, 0, 1);	
+//
+//	float luminosity = 100.f;
+//	vec3 diffuseFactor = vec3(0.f);
+//	vec3 lightColor = vec3(0.5f, 0.5f, 0.0f);
+//	vec3 light = (diffuse + specular) * falloff * lightColor * luminosity;	
+//
+//	color += light;
 
 	return vec4(color, 1.f);
 }

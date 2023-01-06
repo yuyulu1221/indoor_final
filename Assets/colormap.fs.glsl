@@ -110,7 +110,7 @@ void shadow_test()
     }
     else
     {
-        frag_shadow = vec4(0.5f);
+        frag_shadow = vec4(0.4f);
     }
     if (isPtLightShowed) {
         if(ptShadowTest)

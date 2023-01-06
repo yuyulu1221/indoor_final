@@ -176,6 +176,8 @@ typedef struct _DeferredUniform {
 	GLint SSAOCase;
 	GLint directLightVec;
 	GLint pointLightPosition;
+	GLint areaLightPosition;
+	GLint areaLightLength;
 	GLint eyePosition;
 	GLint view_matirx;
 	GLint proj_matrix;
@@ -334,7 +336,9 @@ void drawShadowMap();
 
 void drawPtShadowMap();
 
-void drawPtLight();
+void drawPtLightSource();
+
+void drawAreaLightSource();
 
 void drawColorMap();
 

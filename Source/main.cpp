@@ -52,6 +52,7 @@ mat4 ptLight_proj_matrix;
 // areaLight Shadow
 bool isAreaLightShowed = true;
 vec3 areaLightPos = vec3(1.f, 0.5f, -0.5f);
+float areaLightLength = 0.5f;
 vec3 areaLightColor = vec3(0.8f, 0.6f, 0.f);
 mat4 areaLight_proj_matrix;
 
@@ -902,6 +903,7 @@ void setDeferredUniformLocation() {
 	deferred_uniform.SSAOCase = glGetUniformLocation(id, "SSAOCase");
 	deferred_uniform.directLightVec = glGetUniformLocation(id, "directLightVec");
 	deferred_uniform.pointLightPosition = glGetUniformLocation(id, "pointLightPosition");
+	deferred_uniform.areaLightPosition = glGetUniformLocation(id, "areaLightPos");
 	deferred_uniform.eyePosition = glGetUniformLocation(id, "eyePosition");
 	deferred_uniform.view_matirx = glGetUniformLocation(id, "view_matirx");
 	deferred_uniform.proj_matrix = glGetUniformLocation(id, "proj_matrix");
@@ -993,7 +995,7 @@ void drawPtShadowMap() {
 	glUseProgram(0);
 }
 
-void drawPtLight() {
+void drawPtLightSource() {
 	glUseProgram(colormap_program);
 	glViewport(0, 0, window_width, window_height);
 
@@ -1013,6 +1015,12 @@ void drawPtLight() {
 		glDrawElements(GL_TRIANGLES, sphere_shapes[i].drawCount, GL_UNSIGNED_INT, 0);
 	}
 	glUseProgram(0);
+}
+
+void drawAreaLightSource() {
+	glUseProgram(colormap_program);
+	glViewport(0, 0, window_width, window_height);
+	//glBindVertexArray(areaLightvao)
 }
 
 void drawColorMap() {
@@ -1233,7 +1241,7 @@ void My_Display()
 
 	if (isPtLightShowed) {
 		//scene->RenderPointLight();
-		drawPtLight();
+		drawPtLightSource();
 	}
 	//scene->SpecColorRenderPass();
 	drawColorMap();
@@ -1256,6 +1264,7 @@ void My_Display()
 	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightVec));
 	//deferred->SetPointLightPosition(ptLightPos);
 	glUniform3fv(deferred_uniform.pointLightPosition, 1, glm::value_ptr(ptLightPos));
+	glUniform3fv(deferred_uniform.areaLightPosition, 1, glm::value_ptr(areaLightPos));
 	//deferred->SetEyePosition(viewEye);
 	glUniform3fv(deferred_uniform.eyePosition, 1, glm::value_ptr(viewEye));
 	//deferred->SetVP(view_matrix, proj_matrix);
