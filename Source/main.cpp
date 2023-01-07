@@ -44,8 +44,9 @@ mat4 shadow_matrix;
 //vec3 directLightVec = vec3(0.f, -1.f, 0.f);
 //vec3 directLightVec = -normalize(vec3(-2.51449f, 0.477241f, -1.21263f));
 vec3 directLightPos = vec3(-2.845f, 2.028f, -1.293f);
-vec3 directLightVec = normalize(vec3(0.542f, -0.141f, -0.422f) - directLightPos);
 vec3 directLightCenter = vec3(0.542f, -0.141f, -0.422f);
+vec3 directLightVec = normalize(directLightCenter - directLightPos);
+
 //vec3 directLightPos = vec3(0.f) - 2.5f * directLightVec;
 float shadowRange = 5.f;
 
@@ -64,7 +65,7 @@ vec3 areaLightPos = vec3(1.f, 0.5f, -0.5f);
 //float areaLightLength = 0.5f;
 float areaLightWidth = 0.4f;
 float areaLightHeight = 0.25f;
-vec3 areaLightDir = vec3(-1.f, 0.f, -1.f);
+vec3 areaLightDir = vec3(0.f, 0.f, -1.f);
 vec3 areaLightColor = vec3(0.8f, 0.6f, 0.f);
 mat4 areaLight_proj_matrix;
 mat4 areaLight_rotate_matrix = mat4(1.f);
@@ -1248,7 +1249,7 @@ void My_Init()
 void My_Display()
 {
 
-	viewCenter = viewEye + vec3(cos(vVertical) * cos(vHorizontal), tan(vHorizontal), sin(vVertical) * cos(vHorizontal));
+	viewCenter = viewEye - vec3(cos(vVertical) * cos(vHorizontal), -tan(vHorizontal), sin(vVertical) * cos(vHorizontal));
 	view_matrix = lookAt(viewEye, viewCenter, viewUp);
 	vector<mat4> ptLightVP;
 	ptLightVP.push_back(ptLight_proj_matrix * lookAt(ptLightPos, ptLightPos + vec3(1.f, 0.f, 0.f), vec3(0.f, -1.f, 0.f)));
@@ -1297,7 +1298,8 @@ void My_Display()
 		//scene->RenderPointLight();
 		drawPtLightSource();
 	}
-	drawAreaLightSource();
+	if (isAreaLightShowed)
+		drawAreaLightSource();
 	//scene->SpecColorRenderPass();
 	drawColorMap();
 
@@ -1316,7 +1318,7 @@ void My_Display()
 	//deferred->SetSSAOCase(isSSAO);
 	glUniform1i(deferred_uniform.SSAOCase, isSSAO);
 	//deferred->SetDirectLightVec(directLightVec);
-	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightCenter - directLightPos));
+	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightVec));
 	//deferred->SetPointLightPosition(ptLightPos);
 	glUniform1i(deferred_uniform.isPtLightShowed, isPtLightShowed);
 	glUniform3fv(deferred_uniform.pointLightPosition, 1, glm::value_ptr(ptLightPos));
@@ -1325,6 +1327,7 @@ void My_Display()
 	glUniform3fv(deferred_uniform.areaLightDir, 1, glm::value_ptr(areaLightDir));
 	//deferred->SetEyePosition(viewEye);
 	glUniform3fv(deferred_uniform.eyePosition, 1, glm::value_ptr(viewEye));
+	glUniform3fv(deferred_uniform.eyeCenter, 1, glm::value_ptr(viewCenter));
 	//deferred->SetVP(view_matrix, proj_matrix);
 	glUniformMatrix4fv(deferred_uniform.view_matrix, 1, GL_FALSE, glm::value_ptr(view_matrix));
 	glUniformMatrix4fv(deferred_uniform.proj_matrix, 1, GL_FALSE, glm::value_ptr(proj_matrix));
@@ -1553,6 +1556,7 @@ void My_Keyboard(unsigned char key, int x, int y)
 			break;
 	}
 	directLightVec = normalize(directLightCenter - directLightPos);
+	light_view_matrix = lookAt(directLightPos, directLightCenter, viewUp);
 }
 
 void My_SpecialKeys(int key, int x, int y)

@@ -19,18 +19,20 @@ uniform bool SSAOCase;
 uniform vec3 directLightVec = vec3(0.f);
 uniform bool isPtLightShowed;
 uniform vec3 pointLightPosition = vec3(0.f);
-uniform vec3 pointLightColor = vec3(1.f, 1.f, 1.f);
+uniform vec3 pointLightColor = vec3(.8f, 0.f, .6f);
 uniform bool isAreaLightShowed;
 uniform vec3 areaLightPos = vec3(0.f);
-uniform float areaLightWidth = 0.4f;
-uniform float areaLightHeight = 0.3f;
+uniform float areaLightWidth = 4.f;
+uniform float areaLightHeight = 2.f;
 uniform vec3 areaLightDir = vec3(.0f);
 uniform vec3 areaLightColor = vec3(.8f, .6f, .0f);
 uniform vec3 eyePosition = vec3(0.f);
+uniform vec3 eyeCenter = vec3(0.f);
 uniform mat4 view_matrix = mat4(0.f);
 uniform mat4 proj_matrix = mat4(0.f);
 uniform mat4 inv_proj_matrix = mat4(0.f);
 uniform vec2 noise_scale = vec2(0.f);
+uniform bool isNPR = true;
 
 in VS_OUT
 {
@@ -125,7 +127,7 @@ vec4 PhongShading()
 	vec3 ptShadow_albedo = texelFetch(ptShadow_map, ivec2(gl_FragCoord.xy), 0).rgb;
 	
 	vec3 color = vec3(0.f);
-
+	// drawing directLight effect
 	vec3 L = normalize(-directLightVec);
 	vec3 V = normalize(eyePosition - position);
 	vec3 R = reflect(-L, N);
@@ -145,6 +147,25 @@ vec4 PhongShading()
 		color += 0.1f * ambient + (0.7f * diffuse + 0.2f * specular) * shadow_albedo;
 	}
 
+//	if(isNPR) {
+//		vec2 matCapCoord = ((N * inverse(mat3(view_matrix)) + 1) * 0.5).xy; // "normal" is the unmodified input normal  
+//		matCapCoord.y = 1 - matCapCoord.y; // Depending on our environment we need to invert the y coordinate
+//
+//		float stepCount = 3;
+//		float nDotL = dot(N, directLightVec);  
+//		float light = floor(nDotL * stepCount) / stepCount; // _Stepcount is an input value that depends on how many color tones we want
+//
+//		nDotL = dot(N, directLightVec);  
+//		float light = texelFetch(depth_map, vec2(nDotL, 0.5));
+//
+//		nDotL = dot(N, directLightVec);  
+//		float nDotV = dot(N, normalize(eyeCenter - eyePosition)); // The basic view dot normal calculation  
+//		float fresnel = 1 - nDotV; // We want to invert our fresnel here so that the glow goes to the outside
+//
+//		float index = texelFetch(ambient_albedo,gl_FragCoord); // Or vertexcolor.r depending on our setup  
+//		float color = tex2D(_GradientSampler, float2(light, index));
+//	}
+
 	float dist, attenuation;
 	// drawing ptLight effect
 	if (isPtLightShowed) {
@@ -163,15 +184,18 @@ vec4 PhongShading()
 
 	// drawing areaLight effect
 	if (isAreaLightShowed) {
-		vec3 right = vec3(0.f, 0.f, -1.f);
 		vec3 up = vec3(0.f, 1.f, 0.f);
+		vec3 viewDir = normalize(eyeCenter - eyePosition);
+		vec3 viewRight = normalize(cross(viewDir, up));
+		vec3 viewUp = normalize(cross(viewRight, viewDir));
+		vec3 areaLightRight = normalize(cross(areaLightDir, up));
 		L = normalize(areaLightPos - position);
 		R = reflect(-L, N);
 		vec3 p0, p1, p2, p3;
-		p0 = areaLightPos + vec3(0.f, areaLightHeight, 0.f) + normalize(cross(up, areaLightDir)) * areaLightWidth;
-		p1 = areaLightPos + vec3(0.f, -areaLightHeight, 0.f) + normalize(cross(up, areaLightDir)) * areaLightWidth;
-		p2 = areaLightPos + vec3(0.f, -areaLightHeight, 0.f) - normalize(cross(up, areaLightDir)) * areaLightWidth;
-		p3 = areaLightPos + vec3(0.f, areaLightHeight, 0.f) - normalize(cross(up, areaLightDir)) * areaLightWidth;
+		p0 = areaLightPos + vec3(0.f, areaLightHeight, 0.f) - areaLightRight * areaLightWidth;
+		p1 = areaLightPos + vec3(0.f, -areaLightHeight, 0.f) - areaLightRight * areaLightWidth;
+		p2 = areaLightPos + vec3(0.f, -areaLightHeight, 0.f) + areaLightRight * areaLightWidth;
+		p3 = areaLightPos + vec3(0.f, areaLightHeight, 0.f) + areaLightRight * areaLightWidth;
 
 		vec3 v0, v1, v2, v3;
 		v0 = p0 - position;
@@ -180,7 +204,7 @@ vec4 PhongShading()
 		v3 = p3 - position;
 
 		float facingCheck = dot(v0, cross(p3 - p0, p1 - p0));
-		if (facingCheck > 0.0) 
+		if (facingCheck > 0.f) 
 		{
 			return vec4(color, 1.f);
 		}
@@ -192,46 +216,47 @@ vec4 PhongShading()
 		n3 = normalize(cross(v3, v0));
 
 		float g0, g1, g2, g3;
-		g0 = acos(dot(-n0, n1));
-		g1 = acos(dot(-n1, n2));
-		g2 = acos(dot(-n2, n3));
-		g3 = acos(dot(-n3, n0));
+		g0 = acos(dot(n0, -n1));
+		g1 = acos(dot(n1, -n2));
+		g2 = acos(dot(n2, -n3));
+		g3 = acos(dot(n3, -n0));
 
 		float solidAngle = g0 + g1 + g2 + g3 - 2.0 * 3.14159265359;
 		float NoL = solidAngle * 0.2 * (
-			clamp ( dot( normalize ( v0 ), N ), 0, 1) +
-			clamp ( dot( normalize ( v1 ) , N ) , 0, 1)+
-			clamp ( dot( normalize ( v2 ) , N ) , 0, 1)+
-			clamp ( dot( normalize ( v3 ) , N ) , 0, 1)+
-			clamp ( dot( normalize ( areaLightPos - position ) , N ), 0, 1)
+			clamp ( dot( normalize ( v0 ), N ), 0.f, 1.f) +
+			clamp ( dot( normalize ( v1 ) , N ) , 0.f, 1.f)+
+			clamp ( dot( normalize ( v2 ) , N ) , 0.f, 1.f)+
+			clamp ( dot( normalize ( v3 ) , N ) , 0.f, 1.f)+
+			clamp ( dot( normalize ( areaLightPos - position ) , N ), 0.f, 1.f)
 		);
 	
 
 		vec3 intersectPoint = CalculatePlaneIntersection(position, R, areaLightDir, areaLightPos);
-
 		vec3 intersectionVector = intersectPoint - areaLightPos;
-		vec2 intersectPlanePoint = vec2(dot(intersectionVector,right), dot(intersectionVector,up));
+		vec2 intersectPlanePoint = vec2(dot(intersectionVector,areaLightRight), dot(intersectionVector,up));
 		vec2 nearest2DPoint = vec2(clamp(intersectPlanePoint.x, -areaLightWidth, areaLightWidth), clamp(intersectPlanePoint.y, -areaLightHeight, areaLightHeight));	
-
-		diffuse = pointLightColor * max(dot(N, L), 0.f) * diffuse_albedo;
 
 		vec3 specularFactor = vec3(0.f ,0.f, 0.f);
 		float specularAmount = dot(R, areaLightDir);
-		float surfaceSpec = 1.f;
-		float roughness = 0.1f;
-		if (specularAmount > 0.0)
+		float roughness = .9f;
+		float effectFactor = 0.f;
+		if (specularAmount > 0.f)
 		{
 			float specFactor = 1.0 - clamp(length(nearest2DPoint - intersectPlanePoint) * pow((1.0 - roughness), 2) * 32.0, 0.0, 1.0);
-			specularFactor += surfaceSpec * specular_albedo * specularAmount * NoL;
+			//effectFactor += specFactor * specularAmount * NoL;
+			specularFactor = specular_albedo * specFactor * specularAmount * NoL;
 		}	
-		vec3 nearestPoint = areaLightPos + (right * nearest2DPoint.x + up * nearest2DPoint.y);
+		vec3 nearestPoint = areaLightPos + (areaLightRight * nearest2DPoint.x + up * nearest2DPoint.y);
 		dist = distance(position, nearestPoint);
-		//float falloff = 1.0 - clamp(dist / 10.f, 0, 1);	
+		vec3 nL = normalize(vec3(nearestPoint - position));
+		vec3 nR = reflect(-nL, N);
+		float luminosity = 2.f;
 		attenuation = 1.f + 0.7f * dist + 0.14 * dist * dist;
-
-		float luminosity = 1.f;
-		vec3 light = (0.7f * diffuse + 0.2f * specularAmount) / attenuation * areaLightColor * luminosity;	
-
+		//diffuse = areaLightColor * max(dot(N, nL), 0.f)  * diffuse_albedo;
+		diffuse = areaLightColor * max(dot(N, L), 0.f)  * diffuse_albedo * specularFactor * 10.f;
+		specular = areaLightColor * pow(max(dot(R, V), 0.f), 900.f) * effectFactor * specular_albedo ;
+		vec3 light = (0.7f * diffuse + 0.2f * specular) / attenuation * luminosity;	
+		
 		color += light;
 	}
 

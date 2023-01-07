@@ -180,6 +180,7 @@ typedef struct _DeferredUniform {
 	GLint areaLightPosition;
 	GLint areaLightDir;
 	GLint eyePosition;
+	GLint eyeCenter;
 	GLint view_matrix;
 	GLint proj_matrix;
 	GLint inv_proj_matrix;
