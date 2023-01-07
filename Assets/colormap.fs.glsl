@@ -1,4 +1,4 @@
-#version 410
+#version 430 core
 
 layout(location = 0) out vec4 frag_position;
 layout(location = 1) out vec4 frag_normal;
@@ -24,9 +24,9 @@ uniform vec3 u3fvKd;
 uniform vec3 u3fvKs;
 uniform vec3 u3fvKe;
 
-uniform bool isPtLightShowed = false;
 uniform vec3 ptLightPos = vec3(0.f);
 uniform vec4 ptLightTex = vec4(1.f);
+layout(location=1) uniform bool isArea;
 
 uniform mat4 um4m;
 
@@ -72,6 +72,9 @@ void main()
         frag_diffuse = color * texture(tex_disp, fs_in.texcoord);
 //        frag_diffuse = color;
     }
+    else if(isArea) {
+        frag_diffuse = vec4(0.8, 0.6, 0.0, 1.0);
+    }
     else
     {
         frag_diffuse = vec4(u3fvKd, 1.f);
@@ -112,14 +115,12 @@ void shadow_test()
     {
         frag_shadow = vec4(0.4f);
     }
-    if (isPtLightShowed) {
-        if(ptShadowTest)
-        {  
-            frag_ptShadow = vec4(1.f);
-        }
-        else
-        {
-            frag_ptShadow = vec4(0.f);
-        }
+    if(ptShadowTest)
+    {  
+        frag_ptShadow = vec4(1.f);
+    }
+    else
+    {
+        frag_ptShadow = vec4(0.f);
     }
 }

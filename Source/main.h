@@ -156,7 +156,6 @@ typedef struct _SceneUniform
 	GLint lightViewVP;
 	GLint lightViewM;
 
-	GLint isPtLightShowed;
 	GLint ptLightPos;
 	GLint ptLightTex;
 	GLint ptLightViewVP;
@@ -175,7 +174,9 @@ typedef struct _DeferredUniform {
 	GLint shadingCase;
 	GLint SSAOCase;
 	GLint directLightVec;
+	GLint isPtLightShowed;
 	GLint pointLightPosition;
+	GLint isAreaLightShowed;
 	GLint areaLightPosition;
 	GLint areaLightDir;
 	GLint eyePosition;
@@ -235,29 +236,33 @@ vector<Material> trice_materials;
 vector<Shape> trice_shapes;
 vector<Material> sphere_materials;
 vector<Shape> sphere_shapes;
+vector<Material> plane_materials;
+vector<Shape> plane_shapes;
+
+Shape area;
 
 Shape deferred_canvas;
 Shape bloom_canvas;
 Shape screen;
 
 // area light
-const GLfloat psize = 10.0f;
-VertexAL planeVertices[6] = {
-	{ {-psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} },
-	{ {-psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f} },
-	{ { psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} },
-	{ {-psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} },
-	{ { psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} },
-	{ { psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f} }
-};
-VertexAL areaLightVertices[6] = {
-	{ {-8.0f, 2.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // 0 1 5 4
-	{ {-8.0f, 2.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} },
-	{ {-8.0f, 0.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
-	{ {-8.0f, 2.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} },
-	{ {-8.0f, 0.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
-	{ {-8.0f, 0.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }
-};
+//const GLfloat psize = 10.0f;
+//VertexAL planeVertices[6] = {
+//	{ {-psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} },
+//	{ {-psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f} },
+//	{ { psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} },
+//	{ {-psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} },
+//	{ { psize, 0.0f,  psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} },
+//	{ { psize, 0.0f, -psize}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f} }
+//};
+//VertexAL areaLightVertices[6] = {
+//	{ {-8.0f, 2.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // 0 1 5 4
+//	{ {-8.0f, 2.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} },
+//	{ {-8.0f, 0.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
+//	{ {-8.0f, 2.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} },
+//	{ {-8.0f, 0.4f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
+//	{ {-8.0f, 0.4f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }
+//};
 
 // buffer -------------------------------------------------------------------------------------------------
 void setFrameBuffer(int, int);

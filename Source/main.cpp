@@ -61,12 +61,13 @@ mat4 ptLight_proj_matrix;
 // areaLight Shadow
 bool isAreaLightShowed = true;
 vec3 areaLightPos = vec3(1.f, 0.5f, -0.5f);
-float areaLightLength = 0.5f;
-float areaLightWidth = 0.8f;
-float areaLightHeight = 0.5f;
-vec3 areaLightDir = vec3(0.f, 0.f, -1.f);
+//float areaLightLength = 0.5f;
+float areaLightWidth = 0.4f;
+float areaLightHeight = 0.25f;
+vec3 areaLightDir = vec3(-1.f, 0.f, -1.f);
 vec3 areaLightColor = vec3(0.8f, 0.6f, 0.f);
 mat4 areaLight_proj_matrix;
+mat4 areaLight_rotate_matrix = mat4(1.f);
 
 //	about timer
 int timer_cnt = 0;
@@ -75,9 +76,9 @@ unsigned int timer_speed = 16;
 
 int ShadingCase = 0;
 bool isBump = false;
-bool isBloom = true;
-bool isSSAO = true;
-bool isFxaa = true;
+bool isBloom = false;
+bool isSSAO = false;
+bool isFxaa = false;
 
 
 float degToRad(float degree) {
@@ -478,6 +479,7 @@ void loadScene() {
 	loadObj("Grey_White_Room.obj", room_materials, room_shapes);
 	loadObj("trice.obj", trice_materials, trice_shapes);
 	loadObj("Sphere.obj", sphere_materials, sphere_shapes);
+	loadObj("Plane.obj", plane_materials, plane_shapes);
 }
 
 void loadObj(const char* path, vector<Material>& oMaterials, vector<Shape>& oShapes) {
@@ -766,6 +768,37 @@ void loadObj(const char* path, vector<Material>& oMaterials, vector<Shape>& oSha
 	aiReleaseImport(scene);
 }
 
+void genAreaLightvao()
+{
+	glGenVertexArrays(1, &area.vao);
+	glBindVertexArray(area.vao);
+
+	float rectangle[] = { areaLightPos[0] - areaLightWidth, areaLightPos[1] + areaLightHeight, areaLightPos[2],
+						areaLightPos[0] - areaLightWidth, areaLightPos[1] - areaLightHeight, areaLightPos[2],
+						areaLightPos[0] + areaLightWidth, areaLightPos[1] - areaLightHeight, areaLightPos[2],
+						areaLightPos[0] + areaLightWidth, areaLightPos[1] + areaLightHeight, areaLightPos[2] };
+
+	vec3 one = vec3(rectangle[0], rectangle[1], rectangle[2]) - vec3(rectangle[3], rectangle[4], rectangle[5]);
+	vec3 two = vec3(rectangle[3], rectangle[4], rectangle[5]) - vec3(rectangle[6], rectangle[7], rectangle[8]);
+	
+	vec3 normal = cross(one, two);
+	float normal_buf[] = { normal[0], normal[1], normal[2],
+							normal[0], normal[1], normal[2],
+							normal[0], normal[1], normal[2],
+							normal[0], normal[1], normal[2] };
+	glGenBuffers(1, &area.vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, area.vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 12, rectangle, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
+	glEnableVertexAttribArray(0);
+
+	glGenBuffers(1, &area.vbo_normal);
+	glBindBuffer(GL_ARRAY_BUFFER, area.vbo_normal);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 12, normal_buf, GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0);
+	glEnableVertexAttribArray(2);
+}
+
 TextureData LoadImg(const char* path) {
 	TextureData texture;
 	int n;
@@ -866,7 +899,6 @@ void loadScreen() {
 // Uniform ------------------------------------------------------------------------------------------------
 void setSceneUniformLocation() {
 	GLuint id = colormap_program;
-	scene_uniform.isPtLightShowed = glGetUniformLocation(id, "isPtLightShowed");
 	scene_uniform.tex_diffuse = glGetUniformLocation(id, "tex_diffuse");
 	scene_uniform.tex_normal = glGetUniformLocation(id, "tex_normal");
 	scene_uniform.tex_disp = glGetUniformLocation(id, "tex_disp");
@@ -914,7 +946,9 @@ void setDeferredUniformLocation() {
 	deferred_uniform.shadingCase = glGetUniformLocation(id, "shadingCase");
 	deferred_uniform.SSAOCase = glGetUniformLocation(id, "SSAOCase");
 	deferred_uniform.directLightVec = glGetUniformLocation(id, "directLightVec");
+	deferred_uniform.isPtLightShowed = glGetUniformLocation(id, "isPtLightShowed");
 	deferred_uniform.pointLightPosition = glGetUniformLocation(id, "pointLightPosition");
+	deferred_uniform.isAreaLightShowed = glGetUniformLocation(id, "isAreaLightShowed");
 	deferred_uniform.areaLightPosition = glGetUniformLocation(id, "areaLightPos");
 	deferred_uniform.areaLightDir = glGetUniformLocation(id, "areaLightDir");
 	deferred_uniform.eyePosition = glGetUniformLocation(id, "eyePosition");
@@ -1033,11 +1067,17 @@ void drawPtLightSource() {
 void drawAreaLightSource() {
 	glUseProgram(colormap_program);
 	glViewport(0, 0, window_width, window_height);
-	//glBindVertexArray(areaLightvao)
+	glUniform1i(1, true);
+	glUniformMatrix4fv(scene_uniform.um4m, 1, GL_FALSE, glm::value_ptr(mat4(1.0)));
+	glUniformMatrix4fv(scene_uniform.um4v, 1, GL_FALSE, glm::value_ptr(view_matrix));
+	glUniformMatrix4fv(scene_uniform.um4p, 1, GL_FALSE, glm::value_ptr(proj_matrix));
+	glBindVertexArray(area.vao);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 void drawColorMap() {
 	glUseProgram(colormap_program);
+	glUniform1i(1, false);
 	glViewport(0, 0, window_width, window_height);
 	glUniform3fv(glGetUniformLocation(colormap_program, "ptLightPos"), 1, glm::value_ptr(ptLightPos));
 
@@ -1195,6 +1235,8 @@ void My_Init()
 	glUseProgram(window_program);
 	loadScreen();
 
+	genAreaLightvao();
+
 	My_Reshape(600, 600);
 	glUseProgram(0);
 	glBindVertexArray(0);
@@ -1245,7 +1287,6 @@ void My_Display()
 	glUseProgram(colormap_program);
 	glUniformMatrix4fv(scene_uniform.um4v, 1, GL_FALSE, glm::value_ptr(view_matrix));
 	glUniformMatrix4fv(scene_uniform.um4p, 1, GL_FALSE, glm::value_ptr(proj_matrix));
-	glUniform1i(scene_uniform.isPtLightShowed, isPtLightShowed);
 	//scene->SetBumpCase(isBump);
 	glUniform1i(scene_uniform.isBump, isBump);
 	//scene->SetShadowMatrix(shadow_matrix);
@@ -1256,6 +1297,7 @@ void My_Display()
 		//scene->RenderPointLight();
 		drawPtLightSource();
 	}
+	drawAreaLightSource();
 	//scene->SpecColorRenderPass();
 	drawColorMap();
 
@@ -1276,7 +1318,9 @@ void My_Display()
 	//deferred->SetDirectLightVec(directLightVec);
 	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightCenter - directLightPos));
 	//deferred->SetPointLightPosition(ptLightPos);
+	glUniform1i(deferred_uniform.isPtLightShowed, isPtLightShowed);
 	glUniform3fv(deferred_uniform.pointLightPosition, 1, glm::value_ptr(ptLightPos));
+	glUniform1i(deferred_uniform.isAreaLightShowed, isAreaLightShowed);
 	glUniform3fv(deferred_uniform.areaLightPosition, 1, glm::value_ptr(areaLightPos));
 	glUniform3fv(deferred_uniform.areaLightDir, 1, glm::value_ptr(areaLightDir));
 	//deferred->SetEyePosition(viewEye);
@@ -1436,33 +1480,54 @@ void My_Keyboard(unsigned char key, int x, int y)
 		case 'E': case 'e':
 			viewEye -= viewUp * length;
 			break;
-		// pt light move
+		// Light move
 		case 'I': case 'i':
 			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			if (!isAreaLightShowed && *movableLightPos == areaLightPos) break;
 			*movableLightPos -= vec3(1.0, 0.0, 0.0) * length;
 			break;
 		case 'K': case 'k':
 			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			if (!isAreaLightShowed && *movableLightPos == areaLightPos) break;
 			*movableLightPos += vec3(1.0, 0.0, 0.0) * length;
 			break;
 		case 'J': case 'j':
 			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			if (!isAreaLightShowed && *movableLightPos == areaLightPos) break;
 			*movableLightPos += vec3(0.0, 0.0, 1.0) * length;
 			break;
 		case 'L': case 'l':
 			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			if (!isAreaLightShowed && *movableLightPos == areaLightPos) break;
 			*movableLightPos -= vec3(0.0, 0.0, 1.0) * length;
 			break;
 		case 'U': case 'u':
 			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			if (!isAreaLightShowed && *movableLightPos == areaLightPos) break;
 			*movableLightPos += vec3(0.0, 1.0, 0.0) * length;
 			break;
 		case 'O': case 'o':
 			if (!isPtLightShowed && *movableLightPos == ptLightPos) break;
+			if (!isAreaLightShowed && *movableLightPos == areaLightPos) break;
 			*movableLightPos -= vec3(0.0, 1.0, 0.0) * length;
+			break;
+		case 'M': case 'm':
+			if (!isAreaLightShowed) break;
+			areaLight_rotate_matrix = rotate(mat4(1.f), radians(-1.f), vec3(0.f, 1.f, 0.f));
+			vec4 areaLightDir_tmp = vec4(areaLightDir, 1.f) * areaLight_rotate_matrix;
+			areaLightDir = vec3(areaLightDir_tmp);
+			break;
+		case '.':
+			if (!isAreaLightShowed) break;
+			areaLight_rotate_matrix = rotate(mat4(1.f), radians(1.f), vec3(0.f, 1.f, 0.f));
+			areaLightDir_tmp = vec4(areaLightDir, 1.f) * areaLight_rotate_matrix;
+			areaLightDir = vec3(areaLightDir_tmp);
 			break;
 		case 'P': case 'p':
 			isPtLightShowed = !isPtLightShowed;
+			break;
+		case 'Y': case 'y':
+			isAreaLightShowed = !isAreaLightShowed;
 			break;
 		// change texture
 		case 'Z': case 'z':
@@ -1481,6 +1546,8 @@ void My_Keyboard(unsigned char key, int x, int y)
 		case 'B': case 'b':
 			isFxaa = !isFxaa;
 			break;
+		
+
 		default:
 			printf("Key %c is pressed at (%d, %d)\n", key, x, y);
 			break;

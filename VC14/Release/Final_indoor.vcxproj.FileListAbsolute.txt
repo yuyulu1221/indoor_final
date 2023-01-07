@@ -10,3 +10,4 @@ C:\Users\user\OneDrive\Document\NTHU\master\OpenGL\AS\final_230103_2120\VC14\Rel
 C:\Users\user\OneDrive\Document\NTHU\master\OpenGL\AS\final_230103_2150\VC14\Release\Final_indoor.exe
 C:\Users\user\OneDrive\Document\NTHU\master\OpenGL\AS\final_230104_1317\VC14\Release\Final_indoor.exe
 C:\Users\user\OneDrive\Document\NTHU\master\OpenGL\AS\final_230104_1704\VC14\Release\Final_indoor.exe
+C:\Users\user\OneDrive\Document\NTHU\master\OpenGL\AS\final_230107_1406\VC14\Release\Final_indoor.exe
