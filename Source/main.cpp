@@ -35,19 +35,26 @@ mat4 light_view_matrix;
 mat4 light_proj_matrix;
 mat4 scale_bias;
 mat4 shadow_matrix;
-//vec3 directLightVec = vec3(0.f, -1.f, 0.f);
-//vec3 directLightVec = -normalize(vec3(-2.51449f, 0.477241f, -1.21263f));
-vec3 directLightVec = normalize(vec3(0.542f, -0.141f, -0.422f));
-//vec3 directLightPos = vec3(0.f) - 2.5f * directLightVec;
+
+// dirLight
+vec3 directLightLookAt = vec3(0.542f, -0.141f, -0.422f);
 vec3 directLightPos = vec3(-2.845f, 2.028f, -1.293f);
-float shadowRange = 5.f;
+float shadowRange = 5.0f;
 
 // pointLight Shadow
 bool isPtLightShowed = false;
 vec3 ptLightPos = vec3(1.87659f, 0.4625f, 0.103928f);
+vec2 lightPosOnScreen = vec2(0.0f);
 //vec3 ptLightPosition = vec3(2.f, 1.f, -1.5f);
 vec4 ptLightColor = vec4(1.f);
 mat4 ptLight_proj_matrix;
+
+// volLight
+bool isVolLightShowed = true;
+vec3 volLightPos = vec3(-2.845 * 5, 2.028 * 2.5, -1.293 * 5);
+bool moveVolorDir = true;
+// sphere
+vec3 spherePos = vec3(1.87659f, 0.4625f, 0.103928f);
 
 //	about timer
 int timer_cnt = 0;
@@ -56,10 +63,12 @@ unsigned int timer_speed = 16;
 
 int ShadingCase = 0;
 bool isBump = false;
-bool isBloom = true;
+//bool isBloom = true;
+int isBloom = 0;
 bool isSSAO = true;
 bool isFxaa = true;
 
+GLuint texWhite, texBlack;
 
 float degToRad(float degree) {
 	return degree * 3.1415926 / 180.0f;
@@ -106,6 +115,7 @@ void viewToward(vec3 eye, vec3 center) {
 void setFrameBuffer(int w, int h)
 {
 	setGBuffer(w, h);
+	setVBuffer(w, h);
 	setShadowBuffer();
 	setPtShadowBuffer();
 	setDeferredBuffer(w, h);
@@ -244,9 +254,30 @@ void setDeferredBuffer(int width, int height)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+	glBindTexture(GL_TEXTURE_2D, deferred_buffer.tex[2]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, deferred_buffer.fbo);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, deferred_buffer.tex[0], 0);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, deferred_buffer.tex[1], 0);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, deferred_buffer.tex[2], 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void setVBuffer(int width, int height) {
+	glGenFramebuffers(1, &vbuffer.fbo);
+
+	glGenTextures(1, &vbuffer.tex);
+
+	glBindTexture(GL_TEXTURE_2D, vbuffer.tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, vbuffer.fbo);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, vbuffer.tex, 0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -281,14 +312,16 @@ void setWindowBuffer(int width, int height) {
 }
 
 void bindGBuffer() {
+
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gbuffer.fbo);
 	const GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2,
 									GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5,
-									GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7 };
+									GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7};
 	glDrawBuffers(8, draw_buffers);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
 	glClearDepth(1.f);
 }
 
@@ -296,7 +329,6 @@ void bindShadowBuffer() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, shadow_buffer.fbo);
 	glDrawBuffer(GL_NONE);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClearDepth(1.f);
 }
 
@@ -310,10 +342,11 @@ void bindPtShadowBuffer() {
 
 void bindDeferredBuffer() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, deferred_buffer.fbo);
-	const GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, draw_buffers);
+	const GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
+	glDrawBuffers(3, draw_buffers);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClearDepth(1.f);
 }
@@ -327,11 +360,20 @@ void bindBloomBuffer() {
 	glClearDepth(1.f);
 }
 
+void bindVBuffer() {
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, vbuffer.fbo);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearDepth(1.f);
+}
+
 void bindWindowBuffer() {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glDrawBuffer(GL_BACK);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.19, 0.19, 0.19, 1.0);
 	glClearDepth(1.f);
 }
 
@@ -356,13 +398,19 @@ void framebufferReshape(int width, int height) {
 	glBindTexture(GL_TEXTURE_2D, gbuffer.tex[8]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
+	glBindTexture(GL_TEXTURE_2D, vbuffer.tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+
 	glBindTexture(GL_TEXTURE_2D, deferred_buffer.tex[0]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glBindTexture(GL_TEXTURE_2D, deferred_buffer.tex[1]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glBindTexture(GL_TEXTURE_2D, deferred_buffer.tex[2]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 
 	glBindTexture(GL_TEXTURE_2D, bloom_buffer.tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+
 
 	glBindRenderbuffer(GL_RENDERBUFFER, window_buffer.rbo);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, width, height);
@@ -432,6 +480,22 @@ void setProgram(GLuint &program, const char* vShader, const char* fShader, const
 	}
 	
 	glLinkProgram(program);
+}
+
+void LoadTextures(string texturefile, GLuint& texture) {
+
+	TextureData tdata = LoadImg(texturefile.c_str());
+
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tdata.width, tdata.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tdata.data);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	delete tdata.data;
 }
 
 void loadScene() {
@@ -826,7 +890,7 @@ void loadScreen() {
 // Uniform ------------------------------------------------------------------------------------------------
 void setSceneUniformLocation() {
 	GLuint id = colormap_program;
-	scene_uniform.isPtLightShowed = glGetUniformLocation(id, "isPtLightShowed");
+	
 	scene_uniform.tex_diffuse = glGetUniformLocation(id, "tex_diffuse");
 	scene_uniform.tex_normal = glGetUniformLocation(id, "tex_normal");
 	scene_uniform.tex_disp = glGetUniformLocation(id, "tex_disp");
@@ -895,9 +959,24 @@ void setDeferredUniformLocation() {
 void setBloomUniformLocation() {
 	GLuint id = bloom_program;
 	bloom_uniform.isBloom = glGetUniformLocation(id, "isBloom");
+	bloom_uniform.lightPosOnScreen = glGetUniformLocation(id, "lightPosOnScreen");
 	glUseProgram(bloom_program);
 	glUniform1i(glGetUniformLocation(id, "main_texture"), 0);
 	glUniform1i(glGetUniformLocation(id, "hdr_texture"), 1);
+	glUniform1i(glGetUniformLocation(id, "vol_texture"), 2);
+}
+
+void setVolUniformLocation() {
+	GLuint id = vol_program;
+	glUseProgram(vol_program);
+	glUniform1i(glGetUniformLocation(id, "main_texture"), 0);
+	
+	vol_uniform.um4m = glGetUniformLocation(id, "um4m");
+	vol_uniform.um4v = glGetUniformLocation(id, "um4v");
+	vol_uniform.um4p = glGetUniformLocation(id, "um4p");
+
+	glUseProgram(0);
+
 }
 
 void setWindowUniformLocation() {
@@ -966,7 +1045,7 @@ void drawPtLight() {
 	glUseProgram(colormap_program);
 	glViewport(0, 0, window_width, window_height);
 
-	mat4 m_sphere = translate(mat4(1.f), ptLightPos) * scale(mat4(1.f),vec3(0.22f));
+	mat4 m_sphere = translate(mat4(1.f), spherePos) * scale(mat4(1.f),vec3(0.22f));
 	for (unsigned int i = 0; i < sphere_shapes.size(); ++i)
 	{
 		int materialID = sphere_shapes[i].materialID;
@@ -1029,6 +1108,52 @@ void drawColorMap() {
 		bindTexture(trice_materials[materialID], DISP);
 		glDrawElements(GL_TRIANGLES, trice_shapes[i].drawCount, GL_UNSIGNED_INT, 0);
 	}
+	glUseProgram(0);
+}
+
+void drawVol() {
+	glUseProgram(vol_program);
+	glViewport(0, 0, window_width, window_height);
+
+
+	mat4 m_sphere = translate(mat4(1.f), spherePos) * scale(mat4(1.f), vec3(0.22f));
+	for (unsigned int i = 0; i < sphere_shapes.size(); ++i)
+	{
+		int materialID = sphere_shapes[i].materialID;
+		glUniformMatrix4fv(vol_uniform.um4m, 1, GL_FALSE, glm::value_ptr(m_sphere));
+		glBindVertexArray(sphere_shapes[i].vao);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texWhite);
+		glDrawElements(GL_TRIANGLES, sphere_shapes[i].drawCount, GL_UNSIGNED_INT, 0);
+	}
+	for (unsigned int i = 0; i < room_shapes.size(); ++i)
+	{
+		int materialID = room_shapes[i].materialID;
+		glUniformMatrix4fv(vol_uniform.um4m, 1, GL_FALSE, glm::value_ptr(mat4(1.f)));
+		glBindVertexArray(room_shapes[i].vao);
+		//room_materials[materialID].BindTexture(0);
+		//bindTexture(room_materials[materialID], TEX);
+		//bindTexture(room_materials[materialID], NOR);
+		//bindTexture(room_materials[materialID], DISP);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texBlack);
+		glDrawElements(GL_TRIANGLES, room_shapes[i].drawCount, GL_UNSIGNED_INT, 0);
+	}
+
+	mat4 m_trice = translate(mat4(1.f), vec3(2.05f, 0.628725f, -1.9f)) * scale(mat4(1.f), vec3(0.001f));
+	for (unsigned int i = 0; i < trice_shapes.size(); ++i)
+	{
+		int materialID = trice_shapes[i].materialID;
+		glUniformMatrix4fv(vol_uniform.um4m, 1, GL_FALSE, glm::value_ptr(m_trice));
+		glBindVertexArray(trice_shapes[i].vao);
+		//bindTexture(trice_materials[materialID], TEX);
+		//bindTexture(trice_materials[materialID], NOR);
+		//bindTexture(trice_materials[materialID], DISP); 
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texBlack);
+		glDrawElements(GL_TRIANGLES, trice_shapes[i].drawCount, GL_UNSIGNED_INT, 0);
+	}
+
 	glUseProgram(0);
 }
 
@@ -1115,7 +1240,13 @@ void My_Init()
 	//deferred = new Deferred();
 	//bloom = new Bloom();
 	//window = new Window();
-	
+	LoadTextures("texture/black.png", texBlack);
+	LoadTextures("texture/white.png", texWhite);
+	setProgram(vol_program, "vol.vs.glsl", "vol.fs.glsl", nullptr);
+	setVolUniformLocation();
+	glUseProgram(vol_program);
+	loadScene();
+
 	//scene->Initialize();
 	setProgram(colormap_program, "colormap.vs.glsl", "colormap.fs.glsl", nullptr);
 	setProgram(shadowmap_program, "shadowmap.vs.glsl", "shadowmap.fs.glsl", nullptr);
@@ -1163,103 +1294,111 @@ void My_Display()
 	ptLightVP.push_back(ptLight_proj_matrix * lookAt(ptLightPos, ptLightPos + vec3(0.f, 0.f, 1.f), vec3(0.f, -1.f, 0.f)));
 	ptLightVP.push_back(ptLight_proj_matrix * lookAt(ptLightPos, ptLightPos + vec3(0.f, 0.f, -1.f), vec3(0.f, -1.f, 0.f)));
 
-	//framebuffer->BindShadowFrame();
+	light_view_matrix = lookAt(directLightPos, directLightLookAt, viewUp);
+	
+	bindVBuffer();
+	glUseProgram(vol_program);
+	glUniformMatrix4fv(vol_uniform.um4v, 1, GL_FALSE, glm::value_ptr(view_matrix));
+	glUniformMatrix4fv(vol_uniform.um4p, 1, GL_FALSE, glm::value_ptr(proj_matrix));
+
+	drawVol();
+
 	bindShadowBuffer();
-	//scene->SetLightVP(light_proj_matrix * light_view_matrix);
 	setLightVP(light_proj_matrix * light_view_matrix);
-	//scene->ShadowRenderPass();
 	drawShadowMap();
 
-	//framebuffer->BindPtLightShadowBuffer();
 	bindPtShadowBuffer();
 	if (isPtLightShowed) {
-		//scene->SetPtLightVP(ptLightVP);
 		setPtLightVP(ptLightVP);
-		//scene->SetPtLightPos(ptLightPos);
-		//scene->ptShadowRenderPass();
 		drawPtShadowMap();
 	}
 
-	//framebuffer->BindGbufferFrame();
 	bindGBuffer();
-	//scene->BindShadowTexture(&framebuffer->shadowbuffer.tex);
 	bindShadowTexture();
-	//scene->BindPtShadowTexture(&framebuffer->ptLightShadowbuffer.tex);
 	bindPtShadowTexture();
 
-	//scene->SetVP(view_matrix, proj_matrix);
-		//scene->SetVP(light_view_matrix, light_proj_matrix);
 	glUseProgram(colormap_program);
 	glUniformMatrix4fv(scene_uniform.um4v, 1, GL_FALSE, glm::value_ptr(view_matrix));
 	glUniformMatrix4fv(scene_uniform.um4p, 1, GL_FALSE, glm::value_ptr(proj_matrix));
+	
 	glUniform1i(scene_uniform.isPtLightShowed, isPtLightShowed);
-	//scene->SetBumpCase(isBump);
 	glUniform1i(scene_uniform.isBump, isBump);
-	//scene->SetShadowMatrix(shadow_matrix);
+	
 	glUniformMatrix4fv(scene_uniform.shadow_matrix, 1, GL_FALSE, glm::value_ptr(shadow_matrix));
 	glUseProgram(0);
 
 	if (isPtLightShowed) {
-		//scene->RenderPointLight();
+		spherePos = ptLightPos;
+		drawPtLight();
+
+	}
+	if (isVolLightShowed) {
+		spherePos = volLightPos;
 		drawPtLight();
 	}
-	//scene->SpecColorRenderPass();
 	drawColorMap();
-
-	//framebuffer->BindDeferredBufferFrame();
 	bindDeferredBuffer();
-	//deferred->BindSpecTexture(framebuffer->gbuffer.tex, 9);
+
 	glUseProgram(deferred_program);
 	for (unsigned int i = 0; i < 9; i++)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, gbuffer.tex[i]);
 	}
-	//deferred->SetShadingCase(ShadingCase);
+	
 	glUseProgram(deferred_program);
 	glUniform1i(deferred_uniform.shadingCase, ShadingCase);
-	//deferred->SetSSAOCase(isSSAO);
+	
 	glUniform1i(deferred_uniform.SSAOCase, isSSAO);
-	//deferred->SetDirectLightVec(directLightVec);
-	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightVec));
-	//deferred->SetPointLightPosition(ptLightPos);
+	
+	//glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightVec));
+	glUniform3fv(deferred_uniform.directLightVec, 1, glm::value_ptr(directLightLookAt - directLightPos));
+	
 	glUniform3fv(deferred_uniform.pointLightPosition, 1, glm::value_ptr(ptLightPos));
-	//deferred->SetEyePosition(viewEye);
+
 	glUniform3fv(deferred_uniform.eyePosition, 1, glm::value_ptr(viewEye));
-	//deferred->SetVP(view_matrix, proj_matrix);
+	
 	glUniformMatrix4fv(deferred_uniform.view_matirx, 1, GL_FALSE, glm::value_ptr(view_matrix));
 	glUniformMatrix4fv(deferred_uniform.proj_matrix, 1, GL_FALSE, glm::value_ptr(proj_matrix));
 	glUniformMatrix4fv(deferred_uniform.inv_proj_matrix, 1, GL_FALSE, glm::value_ptr(inverse(proj_matrix)));
 	glUseProgram(0);
-	//deferred->RenderPass();
+
 	drawDeferredChose();
 
-	//framebuffer->BindBloomBufferFrame();
 	bindBloomBuffer();
-	//bloom->BindTexture(framebuffer->deferredbuffer.tex, 2);
+	
 	for (unsigned int i = 0; i < 2; i++)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, deferred_buffer.tex[i]);
 	}
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, vbuffer.tex);
+
 	//bloom->SetBloomCase(isBloom);
 	glUseProgram(bloom_program);
 	glUniform1i(bloom_uniform.isBloom, isBloom);
+
+	lightPosOnScreen = proj_matrix * view_matrix * vec4(ptLightPos, 1.0);
+	lightPosOnScreen.x = (lightPosOnScreen.x / window_width + 1) / 2;
+	lightPosOnScreen.y = (lightPosOnScreen.y / window_height + 1) / 2;
+	//printf("l: %f, %f\n" ,lightPosOnScreen.x, lightPosOnScreen.y);
+	glUniform2fv(bloom_uniform.lightPosOnScreen, 1, value_ptr(lightPosOnScreen));
+
 	//bloom->RenderPass();
 	glViewport(0, 0, window_width, window_height);
 	glBindVertexArray(bloom_canvas.vao);
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 	glUseProgram(0);
 
-	//framebuffer->BindWindowBufferFrame();
 	bindWindowBuffer();
-	//window->BindTexture(&framebuffer->bloombuffer.tex);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, bloom_buffer.tex);
-	//window->SetFxaa(isFxaa);
+
 	glUseProgram(window_program);
 	glUniform1i(window_uniform.isFxaa, isFxaa);
-	//window->RenderPass();
+
 	glViewport(0, 0, window_width, window_height);
 	glBindVertexArray(screen.vao);
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -1274,34 +1413,28 @@ void My_Reshape(int width, int height)
 {
 	glViewport(0, 0, width, height);
 	float viewportAspect = (float)width / (float)height;
-	//framebuffer->Resize(width, height);
+
 	framebufferReshape(width, height);
-	//scene->SetViewport(width, height);
-	//deferred->SetViewport(width, height);
-	//deferred->SetNoiseScale(vec2((float)width/4.f, (float)height/4.f));
+
 	glUseProgram(deferred_program);
 	glUniform2fv(deferred_uniform.noise_scale, 1, glm::value_ptr(vec2((float)width / 4.f, (float)height / 4.f)));
-	//deferred->ssao->SetKernalUbo();
+	
 	setKernalUbo();
-	//deferred->ssao->SetNoiseMap();
+	
 	setNoiseMap();
-	//bloom->SetViewport(width, height);
-	//window->SetViewport(width, height);
-
+	
 
 	window_width = width;
 	window_height = height;
 
-	//printf("reshape");
 
 	// camara view
 	proj_matrix = perspective(radians(60.0f), viewportAspect, 0.1f, 1000.0f);
 	view_matrix = lookAt(viewEye, viewCenter, viewUp);
 
 	// light view
-	light_proj_matrix = ortho(-shadowRange, shadowRange, -shadowRange, shadowRange, 0.1f, 100.f);
-	//light_view_matrix = lookAt(directLightPos, vec3(0.f), viewUp);
-	light_view_matrix = lookAt(directLightPos, directLightPos + directLightVec, viewUp);
+	light_proj_matrix = ortho(-shadowRange, shadowRange, -shadowRange, shadowRange, 0.1f, 10.f);
+	light_view_matrix = lookAt(directLightPos, directLightLookAt, viewUp);
 	scale_bias = translate(mat4(1.0f), vec3(0.5f, 0.5f, 0.5f)) * scale(mat4(1.0f), vec3(0.5f, 0.5f, 0.5f));
 	shadow_matrix = scale_bias * light_proj_matrix * light_view_matrix;
 
@@ -1405,6 +1538,43 @@ void My_Keyboard(unsigned char key, int x, int y)
 			if(isPtLightShowed) 
 				ptLightPos -= vec3(0.0, 1.0, 0.0) * length;
 			break;
+		// vol or dir light move
+		case 'T': case 't':
+			//if (moveVolorDir)
+				volLightPos -= vec3(5.0, 0.0, 0.0) * length;
+			//else 
+				directLightPos -= vec3(1.0, 0.0, 0.0) * length;
+			break;
+		case 'G': case 'g':
+			//if (moveVolorDir)
+				volLightPos += vec3(5.0, 0.0, 0.0) * length;
+			//else
+				directLightPos += vec3(1.0, 0.0, 0.0) * length;
+			break;
+		case 'F': case 'f':
+			//if (moveVolorDir)
+				volLightPos += vec3(0.0, 0.0, 5.0) * length;
+			//else
+				directLightPos += vec3(0.0, 0.0, 1.0) * length;
+			break;
+		case 'H': case 'h':
+			//if (moveVolorDir)
+				volLightPos -= vec3(0.0, 0.0, 5.0) * length;
+			//else
+				directLightPos -= vec3(0.0, 0.0, 1.0) * length;
+			break;
+		case 'R': case 'r':
+			//if (moveVolorDir)
+				volLightPos += vec3(0.0, 2.5, 0.0) * length;
+			//else
+				directLightPos += vec3(0.0, 1.0, 0.0) * length;
+			break;
+		case 'Y': case 'y':
+			//if (moveVolorDir)
+				volLightPos -= vec3(0.0, 2.5, 0.0) * length;
+			//else
+				directLightPos -= vec3(0.0, 1.0, 0.0) * length;
+			break;
 		case 'P': case 'p':
 			isPtLightShowed = !isPtLightShowed;
 			break;
@@ -1417,13 +1587,21 @@ void My_Keyboard(unsigned char key, int x, int y)
 			isBump = !isBump;
 			break;
 		case 'C': case 'c':
-			isBloom = !isBloom;
+			//isBloom = !isBloom;
+			isBloom += 1;
+			isBloom %= 3;
 			break;
 		case 'V': case 'v':
 			isSSAO = !isSSAO;
 			break;
 		case 'B': case 'b':
 			isFxaa = !isFxaa;
+			break;
+		case 'N': case 'n':
+			isVolLightShowed = !isVolLightShowed;
+			break;
+		case 'M': case 'm':
+			moveVolorDir = !moveVolorDir;
 			break;
 		default:
 			printf("Key %c is pressed at (%d, %d)\n", key, x, y);

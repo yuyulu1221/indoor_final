@@ -43,6 +43,12 @@
     <None Include="..\Assets\bloom.vs.glsl">
       <Filter>glsl</Filter>
     </None>
+    <None Include="..\Assets\vol.fs.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="..\Assets\vol.vs.glsl">
+      <Filter>glsl</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="glsl">

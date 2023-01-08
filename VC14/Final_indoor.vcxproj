@@ -29,7 +29,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -96,6 +96,8 @@
     <None Include="..\Assets\ptShadowmap.vs.glsl" />
     <None Include="..\Assets\shadowmap.fs.glsl" />
     <None Include="..\Assets\shadowmap.vs.glsl" />
+    <None Include="..\Assets\vol.fs.glsl" />
+    <None Include="..\Assets\vol.vs.glsl" />
     <None Include="..\Assets\window.fs.glsl" />
     <None Include="..\Assets\window.vs.glsl" />
     <None Include="..\Assets\colormap.vs.glsl" />

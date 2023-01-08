@@ -94,6 +94,12 @@ typedef struct _GBuffer
 	GLuint tex[9];
 } GBuffer;
 
+typedef struct _VBuffer
+{
+	GLuint fbo;
+	GLuint tex;
+} VBuffer;
+
 typedef struct _ShadowBuffer
 {
 	GLuint fbo;
@@ -103,7 +109,7 @@ typedef struct _ShadowBuffer
 typedef struct _DeferredBuffer
 {
 	GLuint fbo;
-	GLuint tex[2];
+	GLuint tex[3];
 } DBuffer;
 
 typedef struct _BloomBuffer
@@ -156,6 +162,36 @@ typedef struct _SceneUniform {
 	GLint ptLightViewM;
 } SUniform;
 
+typedef struct _VUniform {
+
+	GLint tex_diffuse;
+	GLint tex_normal;
+	GLint tex_disp;
+	GLint tex_shadow;
+	GLint tex_ptShadow;
+	GLint shadow_matrix;
+	GLint isTexAttached;
+	GLint isTextureNormal;
+	GLint isBump;
+
+	GLint um4m;
+	GLint um4v;
+	GLint um4p;
+
+	GLint u3fvKd;
+	GLint u3fvKa;
+	GLint u3fvKs;
+	GLint u3fvKe;
+
+	GLint lightViewVP;
+	GLint lightViewM;
+
+	GLint isPtLightShowed;
+	GLint ptLightPos;
+	GLint ptLightTex;
+	GLint ptLightViewVP;
+	GLint ptLightViewM;
+}VUniform;
 // deferred uniform
 typedef struct _DeferredUniform {
 	GLint shadingCase;
@@ -169,9 +205,11 @@ typedef struct _DeferredUniform {
 	GLint noise_scale;
 } DUniform;
 
+
 // bloom uniform
 typedef struct _BloomUniform {
 	GLint isBloom;
+	GLfloat lightPosOnScreen;
 } BUniform;
 
 // window uniform
@@ -190,6 +228,7 @@ int window_height = 700;
 
 // framebuffer
 GBuffer gbuffer;
+VBuffer vbuffer;
 SBuffer shadow_buffer;
 SBuffer ptshadow_buffer;
 DBuffer deferred_buffer;
@@ -197,6 +236,7 @@ BBuffer bloom_buffer;
 WBuffer window_buffer;
 
 // texture program
+GLuint vol_program;
 GLuint colormap_program;
 GLuint shadowmap_program;
 GLuint ptshadowmap_program;
@@ -204,6 +244,7 @@ GLuint deferred_program;
 GLuint bloom_program;
 GLuint window_program;
 
+VUniform vol_uniform;
 SUniform scene_uniform;
 DUniform deferred_uniform;
 BUniform bloom_uniform;
@@ -220,10 +261,13 @@ vector<Shape> sphere_shapes;
 
 Shape deferred_canvas;
 Shape bloom_canvas;
+Shape vol_canvas;
 Shape screen;
 
 // buffer -------------------------------------------------------------------------------------------------
 void setFrameBuffer(int, int);
+
+void setVBuffer(int, int);
 
 void setGBuffer(int, int);
 

@@ -90,11 +90,14 @@ void main()
 			break;
 	}
 
-    float brightness = dot(color.rgb, vec3(0.7152, 0.3126, 0.0722));
-    if(brightness > 1.0)
+    float bloomBrightness = dot(color.rgb, vec3(0.7152, 0.3126, 0.0722));
+    if(bloomBrightness > 0.9)
         hdrColor = vec4(color.rgb, 1.0);
     else
         hdrColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+	float volBrightness = dot(color.rgb, vec3(0.5));
+
 }
 
 bool emissive()
